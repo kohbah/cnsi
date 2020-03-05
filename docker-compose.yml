@@ -1,0 +1,51 @@
+version: '3.7'
+
+services:
+    sonar-db:
+        image: store/oracle/database-enterprise:12.2.0.1
+        container_name: sonar-db01
+        hostname: sonar-db01
+        environment:
+         - DB_SID=xe
+         - DB_PDB=test
+        volumes:
+         - ./oracle/oradata:/opt/oracle/oradata # persistent oracle database data.
+         - ./data-bridge:/data-bridge # just to have someplace to put data into the running container if needed
+        ports:
+        - 1521:1521
+        - 8080:8080
+        - 5500:5500
+        
+    sonar:
+        build: ./sonarqube
+        links:
+         - sonar-db
+        volumes:
+         - ./sonarqube/sonarqube_conf:/opt/sonarqube/conf
+         - ./sonarqube/sonarqube_extensions:/opt/sonarqube/extensions
+         - ./sonarqube/sonarqube_logs:/opt/sonarqube/logs
+         - ./sonarqube/sonarqube_data:/opt/sonarqube/data
+        ulimits:
+         nproc: 65535
+        ports:
+         - 9000:9000
+        environment:
+         - sonar.jdbc.url=jdbc:oracle:thin:@(DESCRIPTION = (ADDRESS = (PROTOCOL = TCP)(HOST = sonar-db01)(PORT = 1521))(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = xe.localdomain) ) )
+         - sonar.jdbc.username=c##sonar
+         - sonar.jdbc.password=sonar
+         - sonar.web.javaOpts=-Xmx1024m -Xms1024m -XX:+HeapDumpOnOutOfMemoryError
+        depends_on:
+         - sonar-db
+        restart: on-failure
+    jenkins-service:
+        build: ./jenkins
+        volumes:
+         - ./jenkins/jenkins_data:/var/jenkins_home
+        links:
+         - sonar
+        ports:
+         - 8081:8080
+         - 50001:50001
+         
+         
+         

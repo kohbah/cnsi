@@ -1,0 +1,5 @@
+FROM sonarqube:lts
+
+RUN chown sonarqube:sonarqube /opt/sonarqube
+
+USER sonarqube
